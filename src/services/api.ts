@@ -309,12 +309,17 @@ export const googleBooksService = {
 
       if (openLibraryResult) {
         console.log("✅ Libro encontrado en OpenLibrary (fallback)");
+        console.log("OpenLibrary result:", openLibraryResult);
 
         // Convertir el resultado de OpenLibrary al formato de Google Books
-        return await this.convertOpenLibraryToGoogleBooks(
+        const convertedBook = await this.convertOpenLibraryToGoogleBooks(
           openLibraryResult,
           cleanISBN
         );
+
+        console.log("Converted book:", convertedBook);
+
+        return convertedBook;
       }
 
       console.log("❌ Libro no encontrado en ninguna fuente");
@@ -332,7 +337,7 @@ export const googleBooksService = {
   async searchInGoogleBooks(
     cleanISBN: string
   ): Promise<GoogleBooksVolume | null> {
-    const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+    const apiKey = import.meta.env.GOOGLE_BOOKS_API_KEY;
 
     if (!apiKey) {
       console.warn(
@@ -407,13 +412,18 @@ export const googleBooksService = {
       openLibraryBook.authors
     );
 
+    // Procesar el publish_date de OpenLibrary para que sea compatible con Google Books
+    const processedPublishDate = this.processOpenLibraryPublishDate(
+      openLibraryBook.publish_date
+    );
+
     return {
       id: openLibraryBook.key || `openlibrary_${originalISBN}`,
       volumeInfo: {
         title: openLibraryBook.title,
         authors: authors,
         publisher: openLibraryBook.publishers?.[0],
-        publishedDate: openLibraryBook.publish_date,
+        publishedDate: processedPublishDate,
         industryIdentifiers: [
           {
             type: "ISBN_13",
@@ -428,6 +438,66 @@ export const googleBooksService = {
         },
       },
     };
+  },
+
+  // Procesar la fecha de publicación de OpenLibrary
+  processOpenLibraryPublishDate(publishDate: any): string | undefined {
+    console.log(
+      "🗓️ Processing OpenLibrary publishDate:",
+      publishDate,
+      "Type:",
+      typeof publishDate
+    );
+
+    if (!publishDate) {
+      console.log("❌ No publishDate provided");
+
+      return undefined;
+    }
+
+    // Si ya es un string con formato YYYY, devolverlo
+    if (typeof publishDate === "string" && /^\d{4}$/.test(publishDate)) {
+      console.log("✅ Already in YYYY format:", publishDate);
+
+      return publishDate;
+    }
+
+    // Si es un string con formato YYYY-MM-DD, extraer YYYY
+    if (typeof publishDate === "string") {
+      const yearMatch = publishDate.match(/^(\d{4})/);
+
+      if (yearMatch) {
+        console.log("✅ Extracted year from string:", yearMatch[1]);
+
+        return yearMatch[1];
+      }
+    }
+
+    // Si es un número, convertirlo a string
+    if (typeof publishDate === "number") {
+      const yearStr = publishDate.toString();
+
+      console.log("✅ Converted number to string:", yearStr);
+
+      return yearStr;
+    }
+
+    // Si es un array (algunos libros tienen múltiples fechas), tomar la primera
+    if (Array.isArray(publishDate) && publishDate.length > 0) {
+      console.log(
+        "📋 Array detected, processing first element:",
+        publishDate[0]
+      );
+
+      return this.processOpenLibraryPublishDate(publishDate[0]);
+    }
+
+    // Último recurso: intentar convertir a string
+    const fallback = String(publishDate).match(/^(\d{4})/)?.[1];
+
+    console.log("🆘 Fallback extraction:", fallback);
+
+    return fallback;
   },
 
   // Extraer autores de OpenLibrary
@@ -519,6 +589,15 @@ export const googleBooksService = {
     const bookData: Partial<BookFormData> = {};
     const volumeInfo = googleBook.volumeInfo;
 
+    console.log("🔍 Extracting data from book:", {
+      title: volumeInfo.title,
+      authors: volumeInfo.authors,
+      publishedDate: volumeInfo.publishedDate,
+      source: googleBook.id?.startsWith("openlibrary")
+        ? "OpenLibrary"
+        : "Google Books",
+    });
+
     // Título
     if (volumeInfo.title) {
       bookData.titulo = volumeInfo.title;
@@ -536,17 +615,34 @@ export const googleBooksService = {
 
     // Año de publicación
     if (volumeInfo.publishedDate) {
+      console.log(
+        "📅 Processing publishedDate:",
+        volumeInfo.publishedDate,
+        "Type:",
+        typeof volumeInfo.publishedDate
+      );
       // Extraer el año (puede venir en formatos como "2020", "2020-01", "2020-01-01")
       const yearMatch = volumeInfo.publishedDate.match(/^(\d{4})/);
 
       if (yearMatch) {
         const year = parseInt(yearMatch[1]);
 
+        console.log("✅ Extracted year:", year);
+
         if (year >= 1000 && year <= new Date().getFullYear()) {
           bookData.anio_publicacion = year;
+          console.log("✅ Set anio_publicacion:", year);
+        } else {
+          console.log("❌ Year out of range:", year);
         }
+      } else {
+        console.log("❌ No year match found in:", volumeInfo.publishedDate);
       }
+    } else {
+      console.log("❌ No publishedDate found");
     }
+
+    console.log("📋 Final bookData:", bookData);
 
     // Imagen de portada
     bookData.portada_url = this.getCoverImageUrl(googleBook);

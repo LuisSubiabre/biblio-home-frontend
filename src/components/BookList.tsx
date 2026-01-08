@@ -8,7 +8,12 @@ import { bookService, Book } from '@/services/api';
 import { EditIcon, DeleteIcon, SearchIcon } from '@/components/icons';
 
 // Función para generar iniciales del título
-const getBookInitials = (title: string): string => {
+const getBookInitials = (title?: string): string => {
+  // Validar que el título existe y no está vacío
+  if (!title || typeof title !== 'string' || title.trim() === '') {
+    return 'B'; // Fallback por si el título está vacío o undefined
+  }
+
   // Artículos y palabras comunes a excluir (español, inglés, etc.)
   const commonWords = new Set([
     'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas',
@@ -17,29 +22,34 @@ const getBookInitials = (title: string): string => {
     'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being'
   ]);
 
-  // Limpiar el título y dividir en palabras
-  const words = title
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '') // Remover puntuación
-    .split(/\s+/)
-    .filter(word => word.length > 0 && !commonWords.has(word));
+  try {
+    // Limpiar el título y dividir en palabras
+    const words = title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remover puntuación
+      .split(/\s+/)
+      .filter(word => word.length > 0 && !commonWords.has(word));
 
-  // Si no quedan palabras significativas, usar las primeras letras del título original
-  if (words.length === 0) {
-    const cleanTitle = title.replace(/[^\w\s]/g, '').trim();
-    if (cleanTitle.length > 0) {
-      return cleanTitle.charAt(0).toUpperCase();
+    // Si no quedan palabras significativas, usar las primeras letras del título original
+    if (words.length === 0) {
+      const cleanTitle = title.replace(/[^\w\s]/g, '').trim();
+      if (cleanTitle.length > 0) {
+        return cleanTitle.charAt(0).toUpperCase();
+      }
+      return 'B'; // Fallback por si el título está vacío
     }
-    return 'B'; // Fallback por si el título está vacío
+
+    // Tomar las primeras letras de las palabras significativas
+    const initials = words
+      .slice(0, 2) // Máximo 2 iniciales
+      .map(word => word.charAt(0).toUpperCase())
+      .join('');
+
+    return initials;
+  } catch (error) {
+    console.warn('Error procesando título para iniciales:', error);
+    return 'B'; // Fallback en caso de error
   }
-
-  // Tomar las primeras letras de las palabras significativas
-  const initials = words
-    .slice(0, 2) // Máximo 2 iniciales
-    .map(word => word.charAt(0).toUpperCase())
-    .join('');
-
-  return initials;
 };
 
 // Componente para mostrar iniciales como placeholder de portada
@@ -93,14 +103,14 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 };
 
 interface BookListProps {
+  books: Book[];
+  loading: boolean;
   onEdit: (book: Book) => void;
   onDelete: (id: number) => void;
 }
 
-export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
-  const [books, setBooks] = useState<Book[]>([]);
+export const BookList: React.FC<BookListProps> = ({ books, loading, onEdit, onDelete }) => {
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('todos');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('todos');
@@ -108,11 +118,10 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    loadBooks();
-  }, []);
+  console.log("📋 BookList recibió", books.length, "libros");
 
   useEffect(() => {
+    console.log("🔄 Filtrando libros - Total:", books.length, "Search:", searchTerm, "Filter:", selectedFilter, "Type:", selectedTypeFilter);
     let filtered = books;
 
     // Aplicar filtro de búsqueda
@@ -144,24 +153,10 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
       filtered = filtered.filter(book => book.tipo === selectedTypeFilter || (!book.tipo && selectedTypeFilter === 'libro'));
     }
 
+    console.log("📊 Libros filtrados:", filtered.length);
     setFilteredBooks(filtered);
   }, [books, searchTerm, selectedFilter, selectedTypeFilter]);
 
-  const loadBooks = async () => {
-    try {
-      setLoading(true);
-      const data = await bookService.getBooks();
-      setBooks(data);
-    } catch (err) {
-      addToast({
-        title: 'Error al cargar libros',
-        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.',
-        color: 'danger'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteClick = (book: Book) => {
     setBookToDelete(book);
@@ -174,7 +169,6 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
     try {
       setDeleteLoading(true);
       await bookService.deleteBook(bookToDelete.id);
-      setBooks(books.filter(book => book.id !== bookToDelete.id));
       addToast({
         title: '¡Libro eliminado!',
         description: 'El libro ha sido eliminado correctamente.',
@@ -490,8 +484,8 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredBooks.map((book) => (
-            <Card key={book.id} className="h-full">
+          {filteredBooks.map((book, index) => (
+            <Card key={book.id || `temp-${index}`} className="h-full">
               <CardHeader className="flex justify-between items-start">
                 <div className="flex gap-3 flex-1">
                   {book.portada_url ? (

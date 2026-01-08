@@ -1,54 +1,29 @@
-import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@heroui/card';
-import { bookService, Stats } from '@/services/api';
+import { Book } from '@/services/api';
 
 interface LibraryStatsProps {
-  refreshTrigger?: number;
+  books: Book[];
 }
 
-export const LibraryStats: React.FC<LibraryStatsProps> = ({ refreshTrigger }) => {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export const LibraryStats: React.FC<LibraryStatsProps> = ({ books }) => {
+  // Calcular estadísticas a partir de la lista de libros
+  const calculateStats = () => {
+    const total_libros = books.length;
+    const libros_en_estante = books.filter(book => book.estado === 'en_estante').length;
+    const libros_prestados = books.filter(book => book.estado === 'prestado').length;
+    const libros_leidos = books.filter(book => book.leido).length;
+    const libros_no_leidos = total_libros - libros_leidos;
 
-  useEffect(() => {
-    loadStats();
-  }, [refreshTrigger]);
-
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      const data = await bookService.getStats();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar estadísticas');
-    } finally {
-      setLoading(false);
-    }
+    return {
+      total_libros,
+      libros_en_estante,
+      libros_prestados,
+      libros_leidos,
+      libros_no_leidos
+    };
   };
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardBody className="p-6">
-              <div className="h-4 bg-gray-200 rounded mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded"></div>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  if (error || !stats) {
-    return (
-      <div className="text-center py-4">
-        <div className="text-red-500">{error || 'Error al cargar estadísticas'}</div>
-      </div>
-    );
-  }
+  const stats = calculateStats();
 
   const statCards = [
     {

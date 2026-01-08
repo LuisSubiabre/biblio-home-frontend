@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@heroui/button";
 
@@ -6,15 +6,46 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BookList } from "@/components/BookList";
 import { BookForm } from "@/components/BookForm";
 import { LibraryStats } from "@/components/Stats";
-import { Book } from "@/services/api";
+import { Book, bookService } from "@/services/api";
 import { PlusIcon } from "@/components/icons";
 
 export default function DashboardPage() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Cargar libros inicialmente
+  useEffect(() => {
+    loadBooks();
+  }, []);
+
+  // Función para limpiar libros duplicados (por si acaso)
+  const cleanDuplicateBooks = (books: Book[]): Book[] => {
+    const seen = new Set<number>();
+    return books.filter(book => {
+      if (!book.id || seen.has(book.id)) {
+        console.warn("Eliminando libro duplicado o sin ID:", book);
+        return false;
+      }
+      seen.add(book.id);
+      return true;
+    });
+  };
+
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      const data = await bookService.getBooks();
+      setBooks(cleanDuplicateBooks(data));
+    } catch (error) {
+      console.error("Error cargando libros:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddBook = () => {
     setSelectedBook(null);
@@ -26,14 +57,40 @@ export default function DashboardPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteBook = (_id: number) => {
-    // Refrescar la lista de libros después de eliminar
-    setRefreshKey((prev) => prev + 1);
+  const handleDeleteBook = async (bookId: number) => {
+    try {
+      await bookService.deleteBook(bookId);
+      // Actualizar estado local eliminando el libro
+      setBooks(prevBooks => prevBooks.filter(book => book.id !== bookId));
+    } catch (error) {
+      console.error("Error eliminando libro:", error);
+      // Recargar libros si hay error
+      loadBooks();
+    }
   };
 
-  const handleFormSave = () => {
-    // Refrescar la lista de libros usando un estado local
-    setRefreshKey((prev) => prev + 1);
+  const handleFormSave = async (savedBook: Book) => {
+    try {
+      console.log("📝 handleFormSave llamado con:", savedBook);
+
+      // SOLUCIÓN: Siempre recargar la lista completa para asegurar actualización
+      console.log("🔄 Recargando lista completa de libros...");
+      await loadBooks();
+      console.log("✅ Lista recargada exitosamente");
+
+      // Limpiar el libro seleccionado para futuras operaciones
+      setSelectedBook(null);
+      console.log("🧹 selectedBook limpiado");
+
+    } catch (error) {
+      console.error("❌ Error recargando libros:", error);
+      // Intentar recargar una vez más en caso de error
+      try {
+        await loadBooks();
+      } catch (retryError) {
+        console.error("❌ Error en reintento:", retryError);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -74,7 +131,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Estadísticas */}
-        <LibraryStats refreshTrigger={refreshKey} />
+        <LibraryStats books={books} />
 
         {/* Lista de Libros */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -82,7 +139,8 @@ export default function DashboardPage() {
             Mis Libros
           </h2>
           <BookList
-            key={refreshKey}
+            books={books}
+            loading={loading}
             onDelete={handleDeleteBook}
             onEdit={handleEditBook}
           />

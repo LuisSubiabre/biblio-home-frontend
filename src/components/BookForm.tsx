@@ -61,7 +61,7 @@ interface BookFormProps {
   book?: Book | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (savedBook: Book) => void;
 }
 
 export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSave }) => {
@@ -127,23 +127,34 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         portada_url: includeCoverImage ? formData.portada_url : '',
       };
 
+      let savedBook: Book;
+
       if (book) {
+        // Actualización: el libro ya existe, actualizarlo
+        console.log("🔄 Actualizando libro existente:", book.id);
         await bookService.updateBook(book.id, dataToSend);
+        savedBook = { ...book, ...dataToSend }; // Combinar datos originales con actualizados
+        console.log("📖 Libro actualizado:", savedBook);
         addToast({
           title: '¡Libro actualizado!',
           description: 'El libro ha sido actualizado correctamente.',
           color: 'success'
         });
       } else {
-        await bookService.createBook(dataToSend);
+        // Creación: crear nuevo libro
+        console.log("➕ Creando nuevo libro con datos:", dataToSend);
+        savedBook = await bookService.createBook(dataToSend);
+        console.log("📚 Libro creado por servidor:", savedBook);
         addToast({
           title: '¡Libro agregado!',
           description: 'El libro ha sido agregado correctamente.',
           color: 'success'
         });
       }
-      // Llamar a onSave para refrescar la lista y luego cerrar el modal
-      onSave();
+
+      // Llamar a onSave con el libro guardado
+      console.log("📤 Llamando onSave con:", savedBook);
+      onSave(savedBook);
       onClose();
     } catch (err) {
       addToast({
