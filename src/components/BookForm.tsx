@@ -10,11 +10,37 @@ import { bookService, Book, BookFormData, openLibraryService } from '@/services/
 
 // Función para generar iniciales del título
 const getBookInitials = (title: string): string => {
-  return title
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase())
+  // Artículos y palabras comunes a excluir (español, inglés, etc.)
+  const commonWords = new Set([
+    'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas',
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'de', 'del', 'al', 'en', 'y', 'o', 'con', 'por', 'para', 'como', 'que', 'su', 'sus',
+    'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being'
+  ]);
+
+  // Limpiar el título y dividir en palabras
+  const words = title
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remover puntuación
+    .split(/\s+/)
+    .filter(word => word.length > 0 && !commonWords.has(word));
+
+  // Si no quedan palabras significativas, usar las primeras letras del título original
+  if (words.length === 0) {
+    const cleanTitle = title.replace(/[^\w\s]/g, '').trim();
+    if (cleanTitle.length > 0) {
+      return cleanTitle.charAt(0).toUpperCase();
+    }
+    return 'B'; // Fallback por si el título está vacío
+  }
+
+  // Tomar las primeras letras de las palabras significativas
+  const initials = words
     .slice(0, 2) // Máximo 2 iniciales
+    .map(word => word.charAt(0).toUpperCase())
     .join('');
+
+  return initials;
 };
 
 // Componente para mostrar iniciales como placeholder de portada
