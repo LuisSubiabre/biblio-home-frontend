@@ -219,6 +219,71 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
     return book.portada_url && !invalidImageUrls.has(book.portada_url);
   };
 
+  const exportToCSV = () => {
+    try {
+      // Encabezados del CSV
+      const headers = [
+        'ID',
+        'Título',
+        'Autor',
+        'Editorial',
+        'Año de Publicación',
+        'Estado',
+        'Leído',
+        'ISBN',
+        'Portada URL',
+        'Fecha de Registro'
+      ];
+
+      // Convertir los libros a filas CSV
+      const csvData = books.map(book => [
+        book.id,
+        `"${book.titulo.replace(/"/g, '""')}"`, // Escapar comillas en títulos
+        `"${book.autor.replace(/"/g, '""')}"`,   // Escapar comillas en autores
+        `"${(book.editorial || '').replace(/"/g, '""')}"`,
+        book.anio_publicacion || '',
+        getStatusText(book.estado),
+        book.leido ? 'Sí' : 'No',
+        `"${(book.isbn || '').replace(/"/g, '""')}"`,
+        `"${(book.portada_url || '').replace(/"/g, '""')}"`,
+        new Date(book.fecha_registro).toLocaleDateString('es-ES')
+      ]);
+
+      // Combinar headers y datos
+      const csvContent = [headers, ...csvData]
+        .map(row => row.join(','))
+        .join('\n');
+
+      // Crear blob y descargar
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `biblioteca_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      addToast({
+        title: '¡Exportación exitosa!',
+        description: `Se exportaron ${books.length} libros a CSV.`,
+        color: 'success'
+      });
+
+    } catch (error) {
+      addToast({
+        title: 'Error en la exportación',
+        description: 'Ocurrió un error al exportar los libros.',
+        color: 'danger'
+      });
+      console.error('Error exporting to CSV:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -281,6 +346,17 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
             Leídos
           </Button>
         </div>
+
+        {/* Botón de exportación */}
+        <Button
+          color="success"
+          variant="flat"
+          onClick={exportToCSV}
+          disabled={loading || books.length === 0}
+          className="whitespace-nowrap"
+        >
+          📊 Exportar a CSV
+        </Button>
       </div>
 
       {filteredBooks.length === 0 ? (
