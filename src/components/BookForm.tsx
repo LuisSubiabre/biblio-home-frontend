@@ -6,6 +6,28 @@ import { Select, SelectItem } from '@heroui/select';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
 import { addToast } from '@heroui/toast';
 import { bookService, Book, BookFormData, openLibraryService } from '@/services/api';
+
+// Función para generar iniciales del título
+const getBookInitials = (title: string): string => {
+  return title
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .slice(0, 2) // Máximo 2 iniciales
+    .join('');
+};
+
+// Componente para mostrar iniciales como placeholder de portada
+const BookCoverPlaceholder: React.FC<{ title: string; className?: string }> = ({ title, className = "w-32 h-44" }) => {
+  const initials = getBookInitials(title);
+
+  return (
+    <div className={`${className} bg-gray-300 dark:bg-gray-600 rounded-lg shadow-md flex-shrink-0 flex items-center justify-center border`}>
+      <span className="text-gray-700 dark:text-gray-300 font-bold text-2xl">
+        {initials}
+      </span>
+    </div>
+  );
+};
 import { SearchIcon } from '@/components/icons';
 
 interface BookFormProps {
@@ -192,28 +214,34 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
             </div>
 
             {/* Vista previa de la imagen de portada */}
-            {coverImageUrl && (
+            {(coverImageUrl || formData.titulo) && (
               <div className="flex justify-center">
                 <div className="relative">
-                  <img
-                    src={coverImageUrl}
-                    alt="Portada del libro"
-                    className="w-32 h-44 object-cover rounded-lg shadow-md border"
-                    onError={(e) => {
-                      // Si la imagen falla al cargar, ocultarla
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCoverImageUrl('');
-                      setFormData(prev => ({ ...prev, portada_url: '' }));
-                    }}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                  >
-                    ×
-                  </button>
+                  {coverImageUrl ? (
+                    <img
+                      src={coverImageUrl}
+                      alt="Portada del libro"
+                      className="w-32 h-44 object-cover rounded-lg shadow-md border"
+                      onError={(e) => {
+                        // Si la imagen falla al cargar, ocultarla
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : formData.titulo ? (
+                    <BookCoverPlaceholder title={formData.titulo} />
+                  ) : null}
+                  {(coverImageUrl || formData.titulo) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCoverImageUrl('');
+                        setFormData(prev => ({ ...prev, portada_url: '' }));
+                      }}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               </div>
             )}

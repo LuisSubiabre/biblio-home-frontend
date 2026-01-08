@@ -7,6 +7,28 @@ import { addToast } from '@heroui/toast';
 import { bookService, Book } from '@/services/api';
 import { EditIcon, DeleteIcon, SearchIcon } from '@/components/icons';
 
+// Función para generar iniciales del título
+const getBookInitials = (title: string): string => {
+  return title
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase())
+    .slice(0, 2) // Máximo 2 iniciales
+    .join('');
+};
+
+// Componente para mostrar iniciales como placeholder de portada
+const BookCoverPlaceholder: React.FC<{ title: string; className?: string }> = ({ title, className = "w-16 h-20" }) => {
+  const initials = getBookInitials(title);
+
+  return (
+    <div className={`${className} bg-gray-300 dark:bg-gray-600 rounded-md shadow-sm flex-shrink-0 flex items-center justify-center`}>
+      <span className="text-gray-700 dark:text-gray-300 font-semibold text-sm">
+        {initials}
+      </span>
+    </div>
+  );
+};
+
 type FilterType = 'todos' | 'en_estante' | 'prestado' | 'leido';
 
 interface DeleteConfirmModalProps {
@@ -238,7 +260,7 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
             <Card key={book.id} className="h-full">
               <CardHeader className="flex justify-between items-start">
                 <div className="flex gap-3 flex-1">
-                  {book.portada_url && (
+                  {book.portada_url ? (
                     <img
                       src={book.portada_url}
                       alt={`Portada de ${book.titulo}`}
@@ -247,6 +269,8 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
                         e.currentTarget.style.display = 'none';
                       }}
                     />
+                  ) : (
+                    <BookCoverPlaceholder title={book.titulo} />
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg line-clamp-2">{book.titulo}</h3>
