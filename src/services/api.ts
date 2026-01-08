@@ -17,7 +17,8 @@ export interface Book {
   anio_publicacion?: number;
   estado: 'en_estante' | 'prestado' | 'otro';
   leido: boolean;
-  imagen_portada?: string;
+  isbn?: string;
+  portada_url?: string;
   fecha_registro: string;
 }
 
@@ -39,7 +40,8 @@ export interface BookFormData {
   anio_publicacion?: number;
   estado: 'en_estante' | 'prestado' | 'otro';
   leido: boolean;
-  imagen_portada?: string;
+  isbn?: string;
+  portada_url?: string;
 }
 
 export interface OpenLibraryBook {
@@ -333,7 +335,7 @@ export const openLibraryService = {
     }
 
     // Imagen de portada
-    bookData.imagen_portada = this.getCoverImageUrl(openLibraryBook, isbn);
+    bookData.portada_url = this.getCoverImageUrl(openLibraryBook, isbn);
 
     return bookData;
   },

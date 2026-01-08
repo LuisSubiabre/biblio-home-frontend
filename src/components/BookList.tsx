@@ -238,9 +238,9 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
             <Card key={book.id} className="h-full">
               <CardHeader className="flex justify-between items-start">
                 <div className="flex gap-3 flex-1">
-                  {book.imagen_portada && (
+                  {book.portada_url && (
                     <img
-                      src={book.imagen_portada}
+                      src={book.portada_url}
                       alt={`Portada de ${book.titulo}`}
                       className="w-16 h-20 object-cover rounded-md shadow-sm flex-shrink-0"
                       onError={(e) => {

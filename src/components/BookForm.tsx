@@ -23,10 +23,11 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     anio_publicacion: undefined,
     estado: 'en_estante',
     leido: false,
-    imagen_portada: '',
+    isbn: '',
+    portada_url: '',
   });
   const [loading, setLoading] = useState(false);
-  const [isbn, setIsbn] = useState('');
+  const [isbnInput, setIsbnInput] = useState('');
   const [isbnLoading, setIsbnLoading] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState<string>('');
 
@@ -39,10 +40,11 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         anio_publicacion: book.anio_publicacion,
         estado: book.estado,
         leido: book.leido,
-        imagen_portada: book.imagen_portada || '',
+        isbn: book.isbn || '',
+        portada_url: book.portada_url || '',
       });
-      setCoverImageUrl(book.imagen_portada || '');
-      setIsbn(''); // Limpiar ISBN cuando se edita un libro existente
+      setCoverImageUrl(book.portada_url || '');
+      setIsbnInput(book.isbn || ''); // Cargar ISBN cuando se edita un libro existente
     } else {
       setFormData({
         titulo: '',
@@ -51,10 +53,11 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         anio_publicacion: undefined,
         estado: 'en_estante',
         leido: false,
-        imagen_portada: '',
+        isbn: '',
+        portada_url: '',
       });
       setCoverImageUrl('');
-      setIsbn(''); // Limpiar ISBN cuando se agrega un libro nuevo
+      setIsbnInput(''); // Limpiar ISBN cuando se agrega un libro nuevo
     }
   }, [book, isOpen]);
 
@@ -93,7 +96,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
   };
 
   const handleISBNLookup = async () => {
-    if (!isbn.trim()) {
+    if (!isbnInput.trim()) {
       addToast({
         title: 'ISBN requerido',
         description: 'Por favor ingresa un ISBN para buscar.',
@@ -104,7 +107,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
 
     setIsbnLoading(true);
     try {
-      const openLibraryBook = await openLibraryService.searchByISBN(isbn);
+      const openLibraryBook = await openLibraryService.searchByISBN(isbnInput);
 
       if (!openLibraryBook) {
         addToast({
@@ -115,17 +118,18 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         return;
       }
 
-      const bookData = await openLibraryService.extractBookData(openLibraryBook, isbn);
+      const bookData = await openLibraryService.extractBookData(openLibraryBook, isbnInput);
 
       // Actualizar el formulario con los datos encontrados
       setFormData(prev => ({
         ...prev,
-        ...bookData
+        ...bookData,
+        isbn: isbnInput, // Guardar el ISBN que se usó para la búsqueda
       }));
 
       // Actualizar la imagen de portada para vista previa
-      if (bookData.imagen_portada) {
-        setCoverImageUrl(bookData.imagen_portada);
+      if (bookData.portada_url) {
+        setCoverImageUrl(bookData.portada_url);
       }
 
       addToast({
@@ -165,8 +169,8 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                 <Input
                   label="ISBN"
                   placeholder="Ingresa el ISBN del libro"
-                  value={isbn}
-                  onChange={(e) => setIsbn(e.target.value)}
+                  value={isbnInput}
+                  onChange={(e) => setIsbnInput(e.target.value)}
                   disabled={loading || isbnLoading}
                   className="flex-1"
                 />
@@ -175,7 +179,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                   color="secondary"
                   variant="flat"
                   onClick={handleISBNLookup}
-                  disabled={loading || isbnLoading || !isbn.trim()}
+                  disabled={loading || isbnLoading || !isbnInput.trim()}
                   className="mt-6"
                   startContent={<SearchIcon className="w-4 h-4" />}
                 >
@@ -204,7 +208,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                     type="button"
                     onClick={() => {
                       setCoverImageUrl('');
-                      setFormData(prev => ({ ...prev, imagen_portada: '' }));
+                      setFormData(prev => ({ ...prev, portada_url: '' }));
                     }}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                   >
@@ -248,6 +252,14 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               disabled={loading}
               min="1000"
               max={new Date().getFullYear()}
+            />
+
+            <Input
+              label="ISBN (opcional)"
+              placeholder="ISBN del libro"
+              value={formData.isbn}
+              onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
+              disabled={loading}
             />
 
             <Select
