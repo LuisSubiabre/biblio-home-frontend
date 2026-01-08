@@ -3,6 +3,7 @@ import { Button } from '@heroui/button';
 import { Input } from '@heroui/input';
 import { Checkbox } from '@heroui/checkbox';
 import { Select, SelectItem } from '@heroui/select';
+import { Switch } from '@heroui/switch';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
 import { addToast } from '@heroui/toast';
 import { bookService, Book, BookFormData, openLibraryService } from '@/services/api';
@@ -52,6 +53,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
   const [isbnInput, setIsbnInput] = useState('');
   const [isbnLoading, setIsbnLoading] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState<string>('');
+  const [includeCoverImage, setIncludeCoverImage] = useState<boolean>(true);
 
   useEffect(() => {
     if (book) {
@@ -67,6 +69,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
       });
       setCoverImageUrl(book.portada_url || '');
       setIsbnInput(book.isbn || ''); // Cargar ISBN cuando se edita un libro existente
+      setIncludeCoverImage(!!book.portada_url); // Activar switch si tiene portada
     } else {
       setFormData({
         titulo: '',
@@ -80,6 +83,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
       });
       setCoverImageUrl('');
       setIsbnInput(''); // Limpiar ISBN cuando se agrega un libro nuevo
+      setIncludeCoverImage(true); // Por defecto activado para nuevos libros
     }
   }, [book, isOpen]);
 
@@ -88,15 +92,21 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     setLoading(true);
 
     try {
+      // Preparar los datos para enviar, incluyendo portada_url solo si el switch está activado
+      const dataToSend = {
+        ...formData,
+        portada_url: includeCoverImage ? formData.portada_url : '',
+      };
+
       if (book) {
-        await bookService.updateBook(book.id, formData);
+        await bookService.updateBook(book.id, dataToSend);
         addToast({
           title: '¡Libro actualizado!',
           description: 'El libro ha sido actualizado correctamente.',
           color: 'success'
         });
       } else {
-        await bookService.createBook(formData);
+        await bookService.createBook(dataToSend);
         addToast({
           title: '¡Libro agregado!',
           description: 'El libro ha sido agregado correctamente.',
@@ -147,11 +157,15 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         ...prev,
         ...bookData,
         isbn: isbnInput, // Guardar el ISBN que se usó para la búsqueda
+        // Solo incluir portada_url si el switch está activado
+        portada_url: includeCoverImage ? bookData.portada_url || prev.portada_url : '',
       }));
 
-      // Actualizar la imagen de portada para vista previa
-      if (bookData.portada_url) {
+      // Actualizar la imagen de portada para vista previa solo si el switch está activado
+      if (includeCoverImage && bookData.portada_url) {
         setCoverImageUrl(bookData.portada_url);
+      } else if (!includeCoverImage) {
+        setCoverImageUrl('');
       }
 
       addToast({
@@ -213,8 +227,19 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               </p>
             </div>
 
+            {/* Switch para incluir imagen de portada */}
+            <div className="flex items-center justify-between">
+              <Switch
+                isSelected={includeCoverImage}
+                onValueChange={setIncludeCoverImage}
+                disabled={loading}
+              >
+                Incluir imagen de portada
+              </Switch>
+            </div>
+
             {/* Vista previa de la imagen de portada */}
-            {(coverImageUrl || formData.titulo) && (
+            {includeCoverImage && (coverImageUrl || formData.titulo) && (
               <div className="flex justify-center">
                 <div className="relative">
                   {coverImageUrl ? (
@@ -236,6 +261,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                       onClick={() => {
                         setCoverImageUrl('');
                         setFormData(prev => ({ ...prev, portada_url: '' }));
+                        setIncludeCoverImage(false); // Desactivar el switch cuando se elimina la imagen
                       }}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                     >
