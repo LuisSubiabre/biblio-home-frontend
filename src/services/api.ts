@@ -290,7 +290,7 @@ export const openLibraryService = {
       // Primero intentar obtener nombres directos si están disponibles
       const directNames = openLibraryBook.authors
         .map(author => author.name)
-        .filter(name => name && name.trim());
+        .filter((name): name is string => Boolean(name && name.trim()));
 
       if (directNames.length > 0) {
         authors.push(...directNames);

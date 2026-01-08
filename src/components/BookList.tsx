@@ -106,7 +106,6 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [invalidImageUrls, setInvalidImageUrls] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadBooks();
@@ -211,13 +210,6 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
     }
   };
 
-  const handleImageError = (imageUrl: string) => {
-    setInvalidImageUrls(prev => new Set(prev).add(imageUrl));
-  };
-
-  const hasValidCover = (book: Book): boolean => {
-    return book.portada_url && !invalidImageUrls.has(book.portada_url);
-  };
 
   const exportToCSV = () => {
     try {
