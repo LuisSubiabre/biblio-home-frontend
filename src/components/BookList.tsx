@@ -103,6 +103,7 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('todos');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('todos');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -138,8 +139,13 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
       });
     }
 
+    // Aplicar filtro por tipo
+    if (selectedTypeFilter !== 'todos') {
+      filtered = filtered.filter(book => book.tipo === selectedTypeFilter || (!book.tipo && selectedTypeFilter === 'libro'));
+    }
+
     setFilteredBooks(filtered);
-  }, [books, searchTerm, selectedFilter]);
+  }, [books, searchTerm, selectedFilter, selectedTypeFilter]);
 
   const loadBooks = async () => {
     try {
@@ -207,6 +213,25 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
         return 'Prestado';
       default:
         return 'Otro';
+    }
+  };
+
+  const getTypeText = (tipo?: string) => {
+    switch (tipo) {
+      case 'libro':
+        return '📖 Libro';
+      case 'comic':
+        return '🦸 Comic';
+      case 'manga':
+        return '🇯🇵 Manga';
+      case 'digital':
+        return '💻 Digital';
+      case 'revista':
+        return '📰 Revista';
+      case 'audiolibro':
+        return '🎧 Audiolibro';
+      default:
+        return '📚 Otro';
     }
   };
 
@@ -339,6 +364,51 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
           </Button>
         </div>
 
+        {/* Filtros por tipo */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm text-gray-600 dark:text-gray-400 self-center mr-2">Tipo:</span>
+          <Button
+            size="sm"
+            variant={selectedTypeFilter === 'todos' ? 'solid' : 'flat'}
+            color={selectedTypeFilter === 'todos' ? 'primary' : 'default'}
+            onClick={() => setSelectedTypeFilter('todos')}
+          >
+            Todos
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedTypeFilter === 'libro' ? 'solid' : 'flat'}
+            color={selectedTypeFilter === 'libro' ? 'secondary' : 'default'}
+            onClick={() => setSelectedTypeFilter('libro')}
+          >
+            📖 Libro
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedTypeFilter === 'comic' ? 'solid' : 'flat'}
+            color={selectedTypeFilter === 'comic' ? 'secondary' : 'default'}
+            onClick={() => setSelectedTypeFilter('comic')}
+          >
+            🦸 Comic
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedTypeFilter === 'manga' ? 'solid' : 'flat'}
+            color={selectedTypeFilter === 'manga' ? 'secondary' : 'default'}
+            onClick={() => setSelectedTypeFilter('manga')}
+          >
+            🇯🇵 Manga
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedTypeFilter === 'digital' ? 'solid' : 'flat'}
+            color={selectedTypeFilter === 'digital' ? 'secondary' : 'default'}
+            onClick={() => setSelectedTypeFilter('digital')}
+          >
+            💻 Digital
+          </Button>
+        </div>
+
         {/* Botón de exportación */}
         <Button
           color="success"
@@ -413,9 +483,14 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
                     </p>
                   )}
                   <div className="flex items-center justify-between">
-                    <Badge color={getStatusColor(book.estado)} variant="flat">
-                      {getStatusText(book.estado)}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge color={getStatusColor(book.estado)} variant="flat">
+                        {getStatusText(book.estado)}
+                      </Badge>
+                      <Badge color="secondary" variant="flat">
+                        {getTypeText(book.tipo)}
+                      </Badge>
+                    </div>
                     <Badge color={book.leido ? 'success' : 'default'} variant="flat">
                       {book.leido ? 'Leído' : 'Sin leer'}
                     </Badge>

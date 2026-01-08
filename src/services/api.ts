@@ -19,6 +19,14 @@ export interface Book {
   leido: boolean;
   isbn?: string;
   portada_url?: string;
+  tipo?:
+    | "libro"
+    | "comic"
+    | "manga"
+    | "digital"
+    | "revista"
+    | "audiolibro"
+    | "otro";
   fecha_registro: string;
 }
 
@@ -42,6 +50,14 @@ export interface BookFormData {
   leido: boolean;
   isbn?: string;
   portada_url?: string;
+  tipo?:
+    | "libro"
+    | "comic"
+    | "manga"
+    | "digital"
+    | "revista"
+    | "audiolibro"
+    | "otro";
 }
 
 export interface OpenLibraryBook {

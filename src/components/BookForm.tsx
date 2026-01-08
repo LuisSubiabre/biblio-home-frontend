@@ -44,12 +44,12 @@ const getBookInitials = (title: string): string => {
 };
 
 // Componente para mostrar iniciales como placeholder de portada
-const BookCoverPlaceholder: React.FC<{ title: string; className?: string }> = ({ title, className = "w-32 h-44" }) => {
+const BookCoverPlaceholder: React.FC<{ title: string; className?: string }> = ({ title, className = "w-20 h-28" }) => {
   const initials = getBookInitials(title);
 
   return (
-    <div className={`${className} bg-gray-300 dark:bg-gray-600 rounded-lg shadow-md flex-shrink-0 flex items-center justify-center border`}>
-      <span className="text-gray-700 dark:text-gray-300 font-bold text-2xl">
+    <div className={`${className} bg-gray-300 dark:bg-gray-600 rounded-md shadow-sm flex-shrink-0 flex items-center justify-center border`}>
+      <span className="text-gray-700 dark:text-gray-300 font-bold text-lg">
         {initials}
       </span>
     </div>
@@ -74,6 +74,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     leido: false,
     isbn: '',
     portada_url: '',
+    tipo: 'libro',
   });
   const [loading, setLoading] = useState(false);
   const [isbnInput, setIsbnInput] = useState('');
@@ -92,6 +93,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         leido: book.leido,
         isbn: book.isbn || '',
         portada_url: book.portada_url || '',
+        tipo: book.tipo || 'libro',
       });
       setCoverImageUrl(book.portada_url || '');
       setIsbnInput(book.isbn || ''); // Cargar ISBN cuando se edita un libro existente
@@ -106,6 +108,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         leido: false,
         isbn: '',
         portada_url: '',
+        tipo: 'libro',
       });
       setCoverImageUrl('');
       setIsbnInput(''); // Limpiar ISBN cuando se agrega un libro nuevo
@@ -217,24 +220,35 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     { key: 'otro', label: 'Otro' },
   ];
 
+  const typeOptions = [
+    { key: 'libro', label: '📖 Libro' },
+    { key: 'comic', label: '🦸 Comic' },
+    { key: 'manga', label: '🇯🇵 Manga' },
+    { key: 'digital', label: '💻 Digital' },
+    { key: 'revista', label: '📰 Revista' },
+    { key: 'audiolibro', label: '🎧 Audiolibro' },
+    { key: 'otro', label: '📚 Otro' },
+  ];
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="sm">
       <ModalContent>
         <form onSubmit={handleSubmit}>
-          <ModalHeader>
+          <ModalHeader className="pb-2">
             {book ? 'Editar Libro' : 'Agregar Nuevo Libro'}
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody className="space-y-3 py-3">
             {/* Campo ISBN con búsqueda automática */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <div className="flex gap-2">
                 <Input
                   label="ISBN"
-                  placeholder="Ingresa el ISBN del libro"
+                  placeholder="ISBN del libro"
                   value={isbnInput}
                   onChange={(e) => setIsbnInput(e.target.value)}
                   disabled={loading || isbnLoading}
                   className="flex-1"
+                  size="sm"
                 />
                 <Button
                   type="button"
@@ -242,37 +256,38 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                   variant="flat"
                   onClick={handleISBNLookup}
                   disabled={loading || isbnLoading || !isbnInput.trim()}
-                  className="mt-6"
-                  startContent={<SearchIcon className="w-4 h-4" />}
+                  size="sm"
+                  className="mt-5 px-3"
+                  startContent={<SearchIcon className="w-3 h-3" />}
                 >
-                  {isbnLoading ? 'Buscando...' : 'Buscar'}
+                  {isbnLoading ? '...' : 'Buscar'}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">
-                Busca automáticamente título, autor, editorial y año de publicación
+              <p className="text-xs text-gray-500 leading-tight">
+                Autocompleta título, autor, editorial y año
               </p>
             </div>
 
             {/* Switch para incluir imagen de portada */}
-            <div className="flex items-center justify-between">
-              <Switch
-                isSelected={includeCoverImage}
-                onValueChange={setIncludeCoverImage}
-                disabled={loading}
-              >
-                Incluir imagen de portada
-              </Switch>
-            </div>
+            <Switch
+              isSelected={includeCoverImage}
+              onValueChange={setIncludeCoverImage}
+              disabled={loading}
+              size="sm"
+              className="py-1"
+            >
+              Incluir portada
+            </Switch>
 
             {/* Vista previa de la imagen de portada */}
             {includeCoverImage && (coverImageUrl || formData.titulo) && (
-              <div className="flex justify-center">
+              <div className="flex justify-center py-2">
                 <div className="relative">
                   {coverImageUrl ? (
                     <img
                       src={coverImageUrl}
                       alt="Portada del libro"
-                      className="w-32 h-44 object-cover rounded-lg shadow-md border"
+                      className="w-20 h-28 object-cover rounded-md shadow-sm border"
                       onError={(e) => {
                         // Si la imagen falla al cargar, ocultarla
                         e.currentTarget.style.display = 'none';
@@ -289,7 +304,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                         setFormData(prev => ({ ...prev, portada_url: '' }));
                         setIncludeCoverImage(false); // Desactivar el switch cuando se elimina la imagen
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                     >
                       ×
                     </button>
@@ -304,6 +319,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
               required
               disabled={loading}
+              size="sm"
             />
 
             <Input
@@ -312,46 +328,72 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               onChange={(e) => setFormData({ ...formData, autor: e.target.value })}
               required
               disabled={loading}
+              size="sm"
             />
 
-            <Input
-              label="Editorial"
-              value={formData.editorial}
-              onChange={(e) => setFormData({ ...formData, editorial: e.target.value })}
-              disabled={loading}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Editorial"
+                value={formData.editorial}
+                onChange={(e) => setFormData({ ...formData, editorial: e.target.value })}
+                disabled={loading}
+                size="sm"
+              />
 
-            <Input
-              type="number"
-              label="Año de publicación"
-              value={formData.anio_publicacion?.toString() || ''}
-              onChange={(e) => setFormData({
-                ...formData,
-                anio_publicacion: e.target.value ? parseInt(e.target.value) : undefined
-              })}
-              disabled={loading}
-              min="1000"
-              max={new Date().getFullYear()}
-            />
+              <Input
+                type="number"
+                label="Año"
+                value={formData.anio_publicacion?.toString() || ''}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  anio_publicacion: e.target.value ? parseInt(e.target.value) : undefined
+                })}
+                disabled={loading}
+                min="1000"
+                max={new Date().getFullYear()}
+                size="sm"
+              />
+            </div>
 
-            <Input
-              label="ISBN (opcional)"
-              placeholder="ISBN del libro"
-              value={formData.isbn}
-              onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
-              disabled={loading}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="ISBN"
+                placeholder="ISBN"
+                value={formData.isbn}
+                onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
+                disabled={loading}
+                size="sm"
+              />
+
+              <Select
+                label="Estado"
+                selectedKeys={[formData.estado]}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  setFormData({ ...formData, estado: selected as 'en_estante' | 'prestado' | 'otro' });
+                }}
+                disabled={loading}
+                size="sm"
+              >
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.key}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
 
             <Select
-              label="Estado"
-              selectedKeys={[formData.estado]}
+              label="Tipo"
+              selectedKeys={[formData.tipo || 'libro']}
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
-                setFormData({ ...formData, estado: selected as 'en_estante' | 'prestado' | 'otro' });
+                setFormData({ ...formData, tipo: selected as 'libro' | 'comic' | 'manga' | 'digital' | 'revista' | 'audiolibro' | 'otro' });
               }}
               disabled={loading}
+              size="sm"
             >
-              {statusOptions.map((option) => (
+              {typeOptions.map((option) => (
                 <SelectItem key={option.key}>
                   {option.label}
                 </SelectItem>
@@ -362,15 +404,18 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               isSelected={formData.leido}
               onValueChange={(checked) => setFormData({ ...formData, leido: checked })}
               disabled={loading}
+              size="sm"
+              className="py-2"
             >
               ¿Ya lo leíste?
             </Checkbox>
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter className="pt-3 gap-2">
             <Button
               variant="light"
               onClick={onClose}
               disabled={loading}
+              size="sm"
             >
               Cancelar
             </Button>
@@ -378,6 +423,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
               type="submit"
               color="primary"
               disabled={loading}
+              size="sm"
             >
               {loading ? (book ? 'Guardando...' : 'Agregando...') : (book ? 'Guardar' : 'Agregar')}
             </Button>
