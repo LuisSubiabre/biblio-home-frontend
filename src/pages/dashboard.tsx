@@ -74,7 +74,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Estadísticas */}
-        <LibraryStats />
+        <LibraryStats refreshTrigger={refreshKey} />
 
         {/* Lista de Libros */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">

@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import { Card, CardBody } from '@heroui/card';
 import { bookService, Stats } from '@/services/api';
 
-export const LibraryStats: React.FC = () => {
+interface LibraryStatsProps {
+  refreshTrigger?: number;
+}
+
+export const LibraryStats: React.FC<LibraryStatsProps> = ({ refreshTrigger }) => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [refreshTrigger]);
 
   const loadStats = async () => {
     try {
