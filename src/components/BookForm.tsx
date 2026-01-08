@@ -6,7 +6,7 @@ import { Select, SelectItem } from '@heroui/select';
 import { Switch } from '@heroui/switch';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
 import { addToast } from '@heroui/toast';
-import { bookService, Book, BookFormData, openLibraryService } from '@/services/api';
+import { bookService, Book, BookFormData, googleBooksService } from '@/services/api';
 
 // Función para generar iniciales del título
 const getBookInitials = (title: string): string => {
@@ -168,9 +168,9 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
 
     setIsbnLoading(true);
     try {
-      const openLibraryBook = await openLibraryService.searchByISBN(isbnInput);
+      const googleBook = await googleBooksService.searchByISBN(isbnInput);
 
-      if (!openLibraryBook) {
+      if (!googleBook) {
         addToast({
           title: 'Libro no encontrado',
           description: 'No se encontró ningún libro con ese ISBN. Verifica que sea correcto.',
@@ -179,7 +179,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         return;
       }
 
-      const bookData = await openLibraryService.extractBookData(openLibraryBook, isbnInput);
+      const bookData = googleBooksService.extractBookData(googleBook);
 
       // Actualizar el formulario con los datos encontrados
       setFormData(prev => ({

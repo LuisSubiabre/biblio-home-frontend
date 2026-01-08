@@ -60,15 +60,31 @@ export interface BookFormData {
     | "otro";
 }
 
-export interface OpenLibraryBook {
-  title?: string;
-  authors?: Array<{ key?: string; name?: string }>;
-  publishers?: string[];
-  publish_date?: string;
-  isbn_13?: string[];
-  isbn_10?: string[];
-  covers?: number[];
-  key?: string;
+export interface GoogleBooksVolume {
+  id: string;
+  volumeInfo: {
+    title?: string;
+    authors?: string[];
+    publisher?: string;
+    publishedDate?: string;
+    industryIdentifiers?: Array<{
+      type: "ISBN_10" | "ISBN_13";
+      identifier: string;
+    }>;
+    imageLinks?: {
+      smallThumbnail?: string;
+      thumbnail?: string;
+      small?: string;
+      medium?: string;
+      large?: string;
+      extraLarge?: string;
+    };
+  };
+}
+
+export interface GoogleBooksResponse {
+  totalItems: number;
+  items?: GoogleBooksVolume[];
 }
 
 export interface Stats {
@@ -270,13 +286,94 @@ export const bookService = {
   },
 };
 
-// Servicios de OpenLibrary
-export const openLibraryService = {
-  async searchByISBN(isbn: string): Promise<OpenLibraryBook | null> {
+// Servicios de Google Books
+export const googleBooksService = {
+  async searchByISBN(isbn: string): Promise<GoogleBooksVolume | null> {
     try {
       // Limpiar el ISBN de caracteres no numéricos
       const cleanISBN = isbn.replace(/[^0-9X]/gi, "");
 
+      // PRIMERO: Intentar con Google Books
+      console.log("🔍 Buscando en Google Books...");
+      const googleResult = await this.searchInGoogleBooks(cleanISBN);
+
+      if (googleResult) {
+        console.log("✅ Libro encontrado en Google Books");
+
+        return googleResult;
+      }
+
+      // SEGUNDO: Fallback a OpenLibrary
+      console.log("📚 No encontrado en Google Books, probando OpenLibrary...");
+      const openLibraryResult = await this.searchInOpenLibrary(cleanISBN);
+
+      if (openLibraryResult) {
+        console.log("✅ Libro encontrado en OpenLibrary (fallback)");
+
+        // Convertir el resultado de OpenLibrary al formato de Google Books
+        return await this.convertOpenLibraryToGoogleBooks(
+          openLibraryResult,
+          cleanISBN
+        );
+      }
+
+      console.log("❌ Libro no encontrado en ninguna fuente");
+
+      return null; // No encontrado en ninguna fuente
+    } catch (error) {
+      console.error("Error en la búsqueda de libros:", error);
+      throw new Error(
+        "Error al buscar el libro. Verifica tu conexión a internet."
+      );
+    }
+  },
+
+  // Buscar en Google Books
+  async searchInGoogleBooks(
+    cleanISBN: string
+  ): Promise<GoogleBooksVolume | null> {
+    const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+
+    if (!apiKey) {
+      console.warn(
+        "⚠️ API key de Google Books no configurada, saltando búsqueda"
+      );
+
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleanISBN}&key=${apiKey}`
+      );
+
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 400) {
+          return null; // ISBN no encontrado
+        }
+        throw new Error(`Error en Google Books: ${response.status}`);
+      }
+
+      const data: GoogleBooksResponse = await response.json();
+
+      if (!data.items || data.items.length === 0) {
+        return null; // No se encontraron resultados
+      }
+
+      return data.items[0];
+    } catch (error) {
+      console.warn(
+        "Error al buscar en Google Books:",
+        error instanceof Error ? error.message : String(error)
+      );
+
+      return null;
+    }
+  },
+
+  // Buscar en OpenLibrary (fallback)
+  async searchInOpenLibrary(cleanISBN: string): Promise<any | null> {
+    try {
       const response = await fetch(
         `https://openlibrary.org/isbn/${cleanISBN}.json`
       );
@@ -285,22 +382,96 @@ export const openLibraryService = {
         if (response.status === 404) {
           return null; // ISBN no encontrado
         }
-        throw new Error(`Error en la búsqueda: ${response.status}`);
+        throw new Error(`Error en OpenLibrary: ${response.status}`);
       }
 
       const data = await response.json();
 
-      return data as OpenLibraryBook;
+      return data;
     } catch (error) {
-      console.error("Error buscando en OpenLibrary:", error);
-      throw new Error(
-        "Error al buscar el libro. Verifica tu conexión a internet."
+      console.warn(
+        "Error al buscar en OpenLibrary:",
+        error instanceof Error ? error.message : String(error)
       );
+
+      return null;
     }
   },
 
-  // Función auxiliar para obtener detalles de un autor por su key
-  async getAuthorName(authorKey: string): Promise<string | null> {
+  // Convertir resultado de OpenLibrary al formato de Google Books
+  async convertOpenLibraryToGoogleBooks(
+    openLibraryBook: any,
+    originalISBN: string
+  ): Promise<GoogleBooksVolume> {
+    const authors = await this.extractAuthorsFromOpenLibrary(
+      openLibraryBook.authors
+    );
+
+    return {
+      id: openLibraryBook.key || `openlibrary_${originalISBN}`,
+      volumeInfo: {
+        title: openLibraryBook.title,
+        authors: authors,
+        publisher: openLibraryBook.publishers?.[0],
+        publishedDate: openLibraryBook.publish_date,
+        industryIdentifiers: [
+          {
+            type: "ISBN_13",
+            identifier: originalISBN,
+          },
+        ],
+        imageLinks: {
+          medium: this.getCoverImageUrlFromOpenLibrary(
+            openLibraryBook,
+            originalISBN
+          ),
+        },
+      },
+    };
+  },
+
+  // Extraer autores de OpenLibrary
+  async extractAuthorsFromOpenLibrary(
+    authors?: Array<{ key?: string; name?: string }>
+  ): Promise<string[] | undefined> {
+    if (!authors || authors.length === 0) return undefined;
+
+    const validAuthors: string[] = [];
+
+    // Primero intentar nombres directos
+    const directNames = authors
+      .map((author: any) => author.name)
+      .filter((name: any) => name && name.trim());
+
+    if (directNames.length > 0) {
+      validAuthors.push(...directNames);
+    }
+
+    // Si no tenemos suficientes nombres directos, hacer llamadas API para autores con key
+    if (validAuthors.length === 0 || validAuthors.length < authors.length) {
+      try {
+        const authorPromises = authors
+          .filter((author: any) => author.key && !author.name) // Solo autores con key pero sin nombre
+          .map((author: any) => this.getAuthorNameFromOpenLibrary(author.key!));
+
+        const apiAuthorNames = await Promise.all(authorPromises);
+        const validApiAuthors = apiAuthorNames.filter(
+          (name) => name !== null
+        ) as string[];
+
+        validAuthors.push(...validApiAuthors);
+      } catch (error) {
+        console.warn("Error obteniendo autores de OpenLibrary:", error);
+      }
+    }
+
+    return validAuthors.length > 0 ? validAuthors : undefined;
+  },
+
+  // Obtener nombre de autor desde OpenLibrary por key
+  async getAuthorNameFromOpenLibrary(
+    authorKey: string
+  ): Promise<string | null> {
     try {
       const response = await fetch(`https://openlibrary.org${authorKey}.json`);
 
@@ -310,73 +481,63 @@ export const openLibraryService = {
 
       return authorData.name || null;
     } catch (error) {
-      console.error("Error obteniendo autor:", error);
+      console.warn("Error obteniendo autor de OpenLibrary:", error);
 
       return null;
     }
   },
 
-  // Función auxiliar para extraer datos del libro de OpenLibrary
-  async extractBookData(
-    openLibraryBook: OpenLibraryBook,
-    isbn: string
-  ): Promise<Partial<BookFormData>> {
-    const bookData: Partial<BookFormData> = {};
-
-    // Título
-    if (openLibraryBook.title) {
-      bookData.titulo = openLibraryBook.title;
+  // Obtener URL de portada de OpenLibrary
+  getCoverImageUrlFromOpenLibrary(
+    openLibraryBook: any,
+    originalISBN: string
+  ): string | undefined {
+    // Método 1: Usar el ID de portada si está disponible
+    if (openLibraryBook.covers && openLibraryBook.covers.length > 0) {
+      return `https://covers.openlibrary.org/b/id/${openLibraryBook.covers[0]}-M.jpg`;
     }
 
-    // Autor - estrategia mejorada para obtener nombres
-    if (openLibraryBook.authors && openLibraryBook.authors.length > 0) {
-      const authors: string[] = [];
+    // Método 2: Usar el key del libro
+    if (openLibraryBook.key) {
+      const olid = openLibraryBook.key
+        .replace("/works/", "")
+        .replace("/books/", "");
 
-      // Primero intentar obtener nombres directos si están disponibles
-      const directNames = openLibraryBook.authors
-        .map((author) => author.name)
-        .filter((name): name is string => Boolean(name && name.trim()));
+      return `https://covers.openlibrary.org/b/olid/${olid}-M.jpg`;
+    }
 
-      if (directNames.length > 0) {
-        authors.push(...directNames);
-      }
+    // Método 3: Usar ISBN como fallback
+    if (originalISBN) {
+      return `https://covers.openlibrary.org/b/isbn/${originalISBN}-M.jpg`;
+    }
 
-      // Si no tenemos suficientes nombres directos, hacer llamadas API para autores con key
-      if (
-        authors.length === 0 ||
-        authors.length < openLibraryBook.authors.length
-      ) {
-        try {
-          const authorPromises = openLibraryBook.authors
-            .filter((author) => author.key && !author.name) // Solo autores con key pero sin nombre
-            .map((author) => this.getAuthorName(author.key!));
+    return undefined;
+  },
 
-          const apiAuthorNames = await Promise.all(authorPromises);
-          const validApiAuthors = apiAuthorNames.filter(
-            (name) => name !== null
-          ) as string[];
+  // Función auxiliar para extraer datos del libro de Google Books
+  extractBookData(googleBook: GoogleBooksVolume): Partial<BookFormData> {
+    const bookData: Partial<BookFormData> = {};
+    const volumeInfo = googleBook.volumeInfo;
 
-          authors.push(...validApiAuthors);
-        } catch (error) {
-          console.error("Error obteniendo autores de la API:", error);
-        }
-      }
+    // Título
+    if (volumeInfo.title) {
+      bookData.titulo = volumeInfo.title;
+    }
 
-      // Si conseguimos al menos un autor, lo asignamos
-      if (authors.length > 0) {
-        bookData.autor = [...new Set(authors)].join(", "); // Eliminar duplicados
-      }
+    // Autor
+    if (volumeInfo.authors && volumeInfo.authors.length > 0) {
+      bookData.autor = volumeInfo.authors.join(", ");
     }
 
     // Editorial
-    if (openLibraryBook.publishers && openLibraryBook.publishers.length > 0) {
-      bookData.editorial = openLibraryBook.publishers[0];
+    if (volumeInfo.publisher) {
+      bookData.editorial = volumeInfo.publisher;
     }
 
     // Año de publicación
-    if (openLibraryBook.publish_date) {
-      // Intentar extraer el año de diferentes formatos
-      const yearMatch = openLibraryBook.publish_date.match(/(\d{4})/);
+    if (volumeInfo.publishedDate) {
+      // Extraer el año (puede venir en formatos como "2020", "2020-01", "2020-01-01")
+      const yearMatch = volumeInfo.publishedDate.match(/^(\d{4})/);
 
       if (yearMatch) {
         const year = parseInt(yearMatch[1]);
@@ -388,38 +549,27 @@ export const openLibraryService = {
     }
 
     // Imagen de portada
-    bookData.portada_url = this.getCoverImageUrl(openLibraryBook, isbn);
+    bookData.portada_url = this.getCoverImageUrl(googleBook);
 
     return bookData;
   },
 
   // Función para obtener la URL de la imagen de portada
-  getCoverImageUrl(
-    openLibraryBook: OpenLibraryBook,
-    originalIsbn: string
-  ): string | undefined {
-    // Limpiar el ISBN para usar en la URL
-    const cleanISBN = originalIsbn.replace(/[^0-9X]/gi, "");
+  getCoverImageUrl(googleBook: GoogleBooksVolume): string | undefined {
+    const imageLinks = googleBook.volumeInfo.imageLinks;
 
-    // Método 1: Usar el ID de portada si está disponible (mejor calidad)
-    if (openLibraryBook.covers && openLibraryBook.covers.length > 0) {
-      return `https://covers.openlibrary.org/b/id/${openLibraryBook.covers[0]}-M.jpg`;
+    if (!imageLinks) {
+      return undefined;
     }
 
-    // Método 2: Usar el key del libro de OpenLibrary
-    if (openLibraryBook.key) {
-      const olid = openLibraryBook.key
-        .replace("/works/", "")
-        .replace("/books/", "");
-
-      return `https://covers.openlibrary.org/b/olid/${olid}-M.jpg`;
-    }
-
-    // Método 3: Usar ISBN como fallback
-    if (cleanISBN) {
-      return `https://covers.openlibrary.org/b/isbn/${cleanISBN}-M.jpg`;
-    }
-
-    return undefined;
+    // Prioridad: medium > thumbnail > small > large > extraLarge > smallThumbnail
+    return (
+      imageLinks.medium ||
+      imageLinks.thumbnail ||
+      imageLinks.small ||
+      imageLinks.large ||
+      imageLinks.extraLarge ||
+      imageLinks.smallThumbnail
+    );
   },
 };
