@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@heroui/button';
 import { Input } from '@heroui/input';
 import { Card, CardBody, CardHeader } from '@heroui/card';
+import { Alert } from '@heroui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface RegisterFormProps {
@@ -14,21 +15,33 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [alert, setAlert] = useState<{
+    type: 'success' | 'error';
+    title: string;
+    description: string;
+  } | null>(null);
 
   const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setAlert(null);
 
     if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setAlert({
+        type: 'error',
+        title: 'Error de validación',
+        description: 'Las contraseñas no coinciden.'
+      });
       return;
     }
 
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setAlert({
+        type: 'error',
+        title: 'Error de validación',
+        description: 'La contraseña debe tener al menos 6 caracteres.'
+      });
       return;
     }
 
@@ -36,8 +49,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
 
     try {
       await register(nombre, email, password);
+      setAlert({
+        type: 'success',
+        title: '¡Registro exitoso!',
+        description: 'Tu cuenta ha sido creada correctamente.'
+      });
+      // El redirect se maneja en el contexto de auth
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al registrar');
+      setAlert({
+        type: 'error',
+        title: 'Error al registrar',
+        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.'
+      });
     } finally {
       setLoading(false);
     }
@@ -49,6 +72,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
         <h1 className="text-2xl font-bold">Registro</h1>
       </CardHeader>
       <CardBody>
+        {alert && (
+          <Alert
+            color={alert.type === 'success' ? 'success' : 'danger'}
+            title={alert.title}
+            description={alert.description}
+            className="mb-4"
+          />
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Nombre completo"
@@ -81,9 +112,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
             required
             disabled={loading}
           />
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
           <Button
             type="submit"
             color="primary"

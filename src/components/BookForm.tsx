@@ -4,6 +4,7 @@ import { Input } from '@heroui/input';
 import { Checkbox } from '@heroui/checkbox';
 import { Select, SelectItem } from '@heroui/select';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
+import { Alert } from '@heroui/alert';
 import { bookService, Book, BookFormData } from '@/services/api';
 
 interface BookFormProps {
@@ -23,7 +24,11 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     leido: false,
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [alert, setAlert] = useState<{
+    type: 'success' | 'error';
+    title: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
     if (book) {
@@ -45,24 +50,40 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         leido: false,
       });
     }
-    setError('');
+    setAlert(null);
   }, [book, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setAlert(null);
 
     try {
       if (book) {
         await bookService.updateBook(book.id, formData);
+        setAlert({
+          type: 'success',
+          title: '¡Libro actualizado!',
+          description: 'El libro ha sido actualizado correctamente.'
+        });
       } else {
         await bookService.createBook(formData);
+        setAlert({
+          type: 'success',
+          title: '¡Libro agregado!',
+          description: 'El libro ha sido agregado correctamente.'
+        });
       }
-      onSave();
-      onClose();
+      setTimeout(() => {
+        onSave();
+        onClose();
+      }, 1500); // Dar tiempo para ver el mensaje de éxito
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar libro');
+      setAlert({
+        type: 'error',
+        title: 'Error al guardar libro',
+        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.'
+      });
     } finally {
       setLoading(false);
     }
@@ -82,10 +103,13 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
             {book ? 'Editar Libro' : 'Agregar Nuevo Libro'}
           </ModalHeader>
           <ModalBody className="space-y-4">
-            {error && (
-              <div className="text-red-500 text-sm text-center p-2 bg-red-50 rounded">
-                {error}
-              </div>
+            {alert && (
+              <Alert
+                color={alert.type === 'success' ? 'success' : 'danger'}
+                title={alert.title}
+                description={alert.description}
+                className="mb-4"
+              />
             )}
 
             <Input

@@ -102,6 +102,7 @@ src/
 - Registro de nuevos usuarios
 - Inicio de sesión
 - Protección de rutas
+- **Mensajes mejorados con Alert** - Notificaciones visuales para éxito/error
 
 ### Gestión de Libros
 - ✅ Agregar libros nuevos
@@ -122,6 +123,17 @@ src/
 - Libros prestados
 - Libros leídos/no leídos
 
+### Interfaz de Usuario
+- **Componente Alert mejorado** - Notificaciones elegantes para feedback en:
+  - ✅ Login/Registro (éxito/error)
+  - ✅ Agregar/Editar libros (éxito/error)
+  - ✅ Eliminar libros (confirmación/éxito/error)
+  - ✅ Cargar libros (errores)
+- **Manejo inteligente de errores** - Extrae mensajes limpios de respuestas JSON de API
+- Diseño responsive
+- Tema oscuro/claro
+- Animaciones suaves
+
 ## 📊 API Endpoints
 
 La aplicación consume la siguiente API:
@@ -135,7 +147,25 @@ La aplicación consume la siguiente API:
 - `GET /api/libros/search?q=` - Buscar libros
 - `GET /api/libros/stats/estadisticas` - Estadísticas
 
+### Manejo de Errores
+
+Los errores de la API se procesan automáticamente para mostrar mensajes limpios al usuario:
+
+```json
+// Respuesta de API: {"error":"Credenciales inválidas"}
+// Mensaje mostrado: "Credenciales inválidas"
+
+{
+  "error": "Credenciales inválidas"    // → "Credenciales inválidas"
+}
+```
+
 ## 🔧 Resolución de Problemas
+
+### Mensajes de error muestran JSON completo
+
+**Problema:** Aparecen mensajes como `{"error":"Credenciales inválidas"}`
+**Solución:** El sistema ya está configurado para extraer mensajes limpios de las respuestas JSON de la API.
 
 ### Error: "Failed to resolve import @heroui/card"
 
