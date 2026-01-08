@@ -40,6 +40,15 @@ export interface BookFormData {
   leido: boolean;
 }
 
+export interface OpenLibraryBook {
+  title?: string;
+  authors?: Array<{ key?: string; name?: string }>;
+  publishers?: string[];
+  publish_date?: string;
+  isbn_13?: string[];
+  isbn_10?: string[];
+}
+
 export interface Stats {
   total_libros: number;
   libros_prestados: number;
@@ -218,5 +227,107 @@ export const bookService = {
   async getStats() {
     const response = await apiRequest('/libros/stats/estadisticas');
     return response.estadisticas as Stats;
+  },
+};
+
+// Servicios de OpenLibrary
+export const openLibraryService = {
+  async searchByISBN(isbn: string): Promise<OpenLibraryBook | null> {
+    try {
+      // Limpiar el ISBN de caracteres no numéricos
+      const cleanISBN = isbn.replace(/[^0-9X]/gi, '');
+
+      const response = await fetch(`https://openlibrary.org/isbn/${cleanISBN}.json`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // ISBN no encontrado
+        }
+        throw new Error(`Error en la búsqueda: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data as OpenLibraryBook;
+    } catch (error) {
+      console.error('Error buscando en OpenLibrary:', error);
+      throw new Error('Error al buscar el libro. Verifica tu conexión a internet.');
+    }
+  },
+
+  // Función auxiliar para obtener detalles de un autor por su key
+  async getAuthorName(authorKey: string): Promise<string | null> {
+    try {
+      const response = await fetch(`https://openlibrary.org${authorKey}.json`);
+      if (!response.ok) return null;
+
+      const authorData = await response.json();
+      return authorData.name || null;
+    } catch (error) {
+      console.error('Error obteniendo autor:', error);
+      return null;
+    }
+  },
+
+  // Función auxiliar para extraer datos del libro de OpenLibrary
+  async extractBookData(openLibraryBook: OpenLibraryBook): Promise<Partial<BookFormData>> {
+    const bookData: Partial<BookFormData> = {};
+
+    // Título
+    if (openLibraryBook.title) {
+      bookData.titulo = openLibraryBook.title;
+    }
+
+    // Autor - estrategia mejorada para obtener nombres
+    if (openLibraryBook.authors && openLibraryBook.authors.length > 0) {
+      const authors: string[] = [];
+
+      // Primero intentar obtener nombres directos si están disponibles
+      const directNames = openLibraryBook.authors
+        .map(author => author.name)
+        .filter(name => name && name.trim());
+
+      if (directNames.length > 0) {
+        authors.push(...directNames);
+      }
+
+      // Si no tenemos suficientes nombres directos, hacer llamadas API para autores con key
+      if (authors.length === 0 || authors.length < openLibraryBook.authors.length) {
+        try {
+          const authorPromises = openLibraryBook.authors
+            .filter(author => author.key && !author.name) // Solo autores con key pero sin nombre
+            .map(author => this.getAuthorName(author.key!));
+
+          const apiAuthorNames = await Promise.all(authorPromises);
+          const validApiAuthors = apiAuthorNames.filter(name => name !== null) as string[];
+          authors.push(...validApiAuthors);
+        } catch (error) {
+          console.error('Error obteniendo autores de la API:', error);
+        }
+      }
+
+      // Si conseguimos al menos un autor, lo asignamos
+      if (authors.length > 0) {
+        bookData.autor = [...new Set(authors)].join(', '); // Eliminar duplicados
+      }
+    }
+
+    // Editorial
+    if (openLibraryBook.publishers && openLibraryBook.publishers.length > 0) {
+      bookData.editorial = openLibraryBook.publishers[0];
+    }
+
+    // Año de publicación
+    if (openLibraryBook.publish_date) {
+      // Intentar extraer el año de diferentes formatos
+      const yearMatch = openLibraryBook.publish_date.match(/(\d{4})/);
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1]);
+        if (year >= 1000 && year <= new Date().getFullYear()) {
+          bookData.anio_publicacion = year;
+        }
+      }
+    }
+
+    return bookData;
   },
 };

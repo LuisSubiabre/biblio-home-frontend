@@ -5,7 +5,8 @@ import { Checkbox } from '@heroui/checkbox';
 import { Select, SelectItem } from '@heroui/select';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
 import { addToast } from '@heroui/toast';
-import { bookService, Book, BookFormData } from '@/services/api';
+import { bookService, Book, BookFormData, openLibraryService } from '@/services/api';
+import { SearchIcon } from '@/components/icons';
 
 interface BookFormProps {
   book?: Book | null;
@@ -24,6 +25,8 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     leido: false,
   });
   const [loading, setLoading] = useState(false);
+  const [isbn, setIsbn] = useState('');
+  const [isbnLoading, setIsbnLoading] = useState(false);
 
   useEffect(() => {
     if (book) {
@@ -35,6 +38,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         estado: book.estado,
         leido: book.leido,
       });
+      setIsbn(''); // Limpiar ISBN cuando se edita un libro existente
     } else {
       setFormData({
         titulo: '',
@@ -44,6 +48,7 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         estado: 'en_estante',
         leido: false,
       });
+      setIsbn(''); // Limpiar ISBN cuando se agrega un libro nuevo
     }
   }, [book, isOpen]);
 
@@ -81,6 +86,54 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     }
   };
 
+  const handleISBNLookup = async () => {
+    if (!isbn.trim()) {
+      addToast({
+        title: 'ISBN requerido',
+        description: 'Por favor ingresa un ISBN para buscar.',
+        color: 'warning'
+      });
+      return;
+    }
+
+    setIsbnLoading(true);
+    try {
+      const openLibraryBook = await openLibraryService.searchByISBN(isbn);
+
+      if (!openLibraryBook) {
+        addToast({
+          title: 'Libro no encontrado',
+          description: 'No se encontró ningún libro con ese ISBN. Verifica que sea correcto.',
+          color: 'warning'
+        });
+        return;
+      }
+
+      const bookData = await openLibraryService.extractBookData(openLibraryBook);
+
+      // Actualizar el formulario con los datos encontrados
+      setFormData(prev => ({
+        ...prev,
+        ...bookData
+      }));
+
+      addToast({
+        title: '¡Libro encontrado!',
+        description: 'Los datos del libro han sido completados automáticamente.',
+        color: 'success'
+      });
+
+    } catch (error) {
+      addToast({
+        title: 'Error en la búsqueda',
+        description: error instanceof Error ? error.message : 'Ocurrió un error al buscar el libro.',
+        color: 'danger'
+      });
+    } finally {
+      setIsbnLoading(false);
+    }
+  };
+
   const statusOptions = [
     { key: 'en_estante', label: 'En estante' },
     { key: 'prestado', label: 'Prestado' },
@@ -95,6 +148,34 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
             {book ? 'Editar Libro' : 'Agregar Nuevo Libro'}
           </ModalHeader>
           <ModalBody className="space-y-4">
+            {/* Campo ISBN con búsqueda automática */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  label="ISBN"
+                  placeholder="Ingresa el ISBN del libro"
+                  value={isbn}
+                  onChange={(e) => setIsbn(e.target.value)}
+                  disabled={loading || isbnLoading}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  color="secondary"
+                  variant="flat"
+                  onClick={handleISBNLookup}
+                  disabled={loading || isbnLoading || !isbn.trim()}
+                  className="mt-6"
+                  startContent={<SearchIcon className="w-4 h-4" />}
+                >
+                  {isbnLoading ? 'Buscando...' : 'Buscar'}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Busca automáticamente título, autor, editorial y año de publicación
+              </p>
+            </div>
+
             <Input
               label="Título"
               value={formData.titulo}
