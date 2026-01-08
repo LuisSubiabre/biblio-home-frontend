@@ -3,7 +3,7 @@ import { Button } from '@heroui/button';
 import { Card, CardBody, CardHeader } from '@heroui/card';
 import { Badge } from '@heroui/badge';
 import { Input } from '@heroui/input';
-import { Alert } from '@heroui/alert';
+import { addToast } from '@heroui/toast';
 import { bookService, Book } from '@/services/api';
 import { EditIcon, DeleteIcon, SearchIcon } from '@/components/icons';
 
@@ -52,11 +52,6 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [alert, setAlert] = useState<{
-    type: 'success' | 'error';
-    title: string;
-    description: string;
-  } | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -83,10 +78,10 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
       const data = await bookService.getBooks();
       setBooks(data);
     } catch (err) {
-      setAlert({
-        type: 'error',
+      addToast({
         title: 'Error al cargar libros',
-        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.'
+        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.',
+        color: 'danger'
       });
     } finally {
       setLoading(false);
@@ -105,17 +100,17 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
       setDeleteLoading(true);
       await bookService.deleteBook(bookToDelete.id);
       setBooks(books.filter(book => book.id !== bookToDelete.id));
-      setAlert({
-        type: 'success',
+      addToast({
         title: '¡Libro eliminado!',
-        description: 'El libro ha sido eliminado correctamente.'
+        description: 'El libro ha sido eliminado correctamente.',
+        color: 'success'
       });
       onDelete(bookToDelete.id);
     } catch (err) {
-      setAlert({
-        type: 'error',
+      addToast({
         title: 'Error al eliminar libro',
-        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.'
+        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.',
+        color: 'danger'
       });
     } finally {
       setDeleteLoading(false);
@@ -154,31 +149,16 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
     );
   }
 
-  if (alert && alert.type === 'error') {
+  if (books.length === 0 && !loading && searchTerm === '') {
     return (
-      <div className="text-center py-8">
-        <Alert
-          color="danger"
-          title={alert.title}
-          description={alert.description}
-          className="mb-4"
-        />
-        <Button onClick={loadBooks} color="primary">
-          Reintentar
-        </Button>
+      <div className="text-center py-8 text-gray-500">
+        No tienes libros registrados. ¡Agrega tu primer libro!
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {alert && alert.type === 'success' && (
-        <Alert
-          color="success"
-          title={alert.title}
-          description={alert.description}
-        />
-      )}
       <div className="flex items-center gap-4">
         <Input
           placeholder="Buscar por título o autor..."

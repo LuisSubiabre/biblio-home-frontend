@@ -12,6 +12,7 @@ import { PlusIcon } from "@/components/icons";
 export default function DashboardPage() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -26,13 +27,13 @@ export default function DashboardPage() {
   };
 
   const handleDeleteBook = (_id: number) => {
-    // La eliminación se maneja en el componente BookList
-    // Aquí podríamos agregar lógica adicional si es necesario
+    // Refrescar la lista de libros después de eliminar
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleFormSave = () => {
-    // Refrescar la lista de libros - esto se maneja en el componente BookList
-    window.location.reload(); // Temporal, mejor usar un estado global
+    // Refrescar la lista de libros usando un estado local
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleLogout = () => {
@@ -80,7 +81,11 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
             Mis Libros
           </h2>
-          <BookList onDelete={handleDeleteBook} onEdit={handleEditBook} />
+          <BookList
+            key={refreshKey}
+            onDelete={handleDeleteBook}
+            onEdit={handleEditBook}
+          />
         </div>
       </main>
 

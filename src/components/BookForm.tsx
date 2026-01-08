@@ -4,7 +4,7 @@ import { Input } from '@heroui/input';
 import { Checkbox } from '@heroui/checkbox';
 import { Select, SelectItem } from '@heroui/select';
 import { Modal, ModalBody, ModalHeader, ModalFooter, ModalContent } from '@heroui/modal';
-import { Alert } from '@heroui/alert';
+import { addToast } from '@heroui/toast';
 import { bookService, Book, BookFormData } from '@/services/api';
 
 interface BookFormProps {
@@ -24,11 +24,6 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     leido: false,
   });
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<{
-    type: 'success' | 'error';
-    title: string;
-    description: string;
-  } | null>(null);
 
   useEffect(() => {
     if (book) {
@@ -50,39 +45,36 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         leido: false,
       });
     }
-    setAlert(null);
   }, [book, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setAlert(null);
 
     try {
       if (book) {
         await bookService.updateBook(book.id, formData);
-        setAlert({
-          type: 'success',
+        addToast({
           title: '¡Libro actualizado!',
-          description: 'El libro ha sido actualizado correctamente.'
+          description: 'El libro ha sido actualizado correctamente.',
+          color: 'success'
         });
       } else {
         await bookService.createBook(formData);
-        setAlert({
-          type: 'success',
+        addToast({
           title: '¡Libro agregado!',
-          description: 'El libro ha sido agregado correctamente.'
+          description: 'El libro ha sido agregado correctamente.',
+          color: 'success'
         });
       }
-      setTimeout(() => {
-        onSave();
-        onClose();
-      }, 1500); // Dar tiempo para ver el mensaje de éxito
+      // Llamar a onSave para refrescar la lista y luego cerrar el modal
+      onSave();
+      onClose();
     } catch (err) {
-      setAlert({
-        type: 'error',
+      addToast({
         title: 'Error al guardar libro',
-        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.'
+        description: err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.',
+        color: 'danger'
       });
     } finally {
       setLoading(false);
@@ -103,15 +95,6 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
             {book ? 'Editar Libro' : 'Agregar Nuevo Libro'}
           </ModalHeader>
           <ModalBody className="space-y-4">
-            {alert && (
-              <Alert
-                color={alert.type === 'success' ? 'success' : 'danger'}
-                title={alert.title}
-                description={alert.description}
-                className="mb-4"
-              />
-            )}
-
             <Input
               label="Título"
               value={formData.titulo}
