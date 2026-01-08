@@ -237,9 +237,21 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
           {filteredBooks.map((book) => (
             <Card key={book.id} className="h-full">
               <CardHeader className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg line-clamp-2">{book.titulo}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{book.autor}</p>
+                <div className="flex gap-3 flex-1">
+                  {book.imagen_portada && (
+                    <img
+                      src={book.imagen_portada}
+                      alt={`Portada de ${book.titulo}`}
+                      className="w-16 h-20 object-cover rounded-md shadow-sm flex-shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg line-clamp-2">{book.titulo}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{book.autor}</p>
+                  </div>
                 </div>
                 <div className="flex gap-1 ml-2">
                   <Button

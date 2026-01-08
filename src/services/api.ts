@@ -17,6 +17,7 @@ export interface Book {
   anio_publicacion?: number;
   estado: 'en_estante' | 'prestado' | 'otro';
   leido: boolean;
+  imagen_portada?: string;
   fecha_registro: string;
 }
 
@@ -38,6 +39,7 @@ export interface BookFormData {
   anio_publicacion?: number;
   estado: 'en_estante' | 'prestado' | 'otro';
   leido: boolean;
+  imagen_portada?: string;
 }
 
 export interface OpenLibraryBook {
@@ -47,6 +49,8 @@ export interface OpenLibraryBook {
   publish_date?: string;
   isbn_13?: string[];
   isbn_10?: string[];
+  covers?: number[];
+  key?: string;
 }
 
 export interface Stats {
@@ -269,7 +273,7 @@ export const openLibraryService = {
   },
 
   // Función auxiliar para extraer datos del libro de OpenLibrary
-  async extractBookData(openLibraryBook: OpenLibraryBook): Promise<Partial<BookFormData>> {
+  async extractBookData(openLibraryBook: OpenLibraryBook, isbn: string): Promise<Partial<BookFormData>> {
     const bookData: Partial<BookFormData> = {};
 
     // Título
@@ -328,6 +332,33 @@ export const openLibraryService = {
       }
     }
 
+    // Imagen de portada
+    bookData.imagen_portada = this.getCoverImageUrl(openLibraryBook, isbn);
+
     return bookData;
+  },
+
+  // Función para obtener la URL de la imagen de portada
+  getCoverImageUrl(openLibraryBook: OpenLibraryBook, originalIsbn: string): string | undefined {
+    // Limpiar el ISBN para usar en la URL
+    const cleanISBN = originalIsbn.replace(/[^0-9X]/gi, '');
+
+    // Método 1: Usar el ID de portada si está disponible (mejor calidad)
+    if (openLibraryBook.covers && openLibraryBook.covers.length > 0) {
+      return `https://covers.openlibrary.org/b/id/${openLibraryBook.covers[0]}-M.jpg`;
+    }
+
+    // Método 2: Usar el key del libro de OpenLibrary
+    if (openLibraryBook.key) {
+      const olid = openLibraryBook.key.replace('/works/', '').replace('/books/', '');
+      return `https://covers.openlibrary.org/b/olid/${olid}-M.jpg`;
+    }
+
+    // Método 3: Usar ISBN como fallback
+    if (cleanISBN) {
+      return `https://covers.openlibrary.org/b/isbn/${cleanISBN}-M.jpg`;
+    }
+
+    return undefined;
   },
 };

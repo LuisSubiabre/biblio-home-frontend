@@ -23,10 +23,12 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
     anio_publicacion: undefined,
     estado: 'en_estante',
     leido: false,
+    imagen_portada: '',
   });
   const [loading, setLoading] = useState(false);
   const [isbn, setIsbn] = useState('');
   const [isbnLoading, setIsbnLoading] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState<string>('');
 
   useEffect(() => {
     if (book) {
@@ -37,7 +39,9 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         anio_publicacion: book.anio_publicacion,
         estado: book.estado,
         leido: book.leido,
+        imagen_portada: book.imagen_portada || '',
       });
+      setCoverImageUrl(book.imagen_portada || '');
       setIsbn(''); // Limpiar ISBN cuando se edita un libro existente
     } else {
       setFormData({
@@ -47,7 +51,9 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         anio_publicacion: undefined,
         estado: 'en_estante',
         leido: false,
+        imagen_portada: '',
       });
+      setCoverImageUrl('');
       setIsbn(''); // Limpiar ISBN cuando se agrega un libro nuevo
     }
   }, [book, isOpen]);
@@ -109,13 +115,18 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
         return;
       }
 
-      const bookData = await openLibraryService.extractBookData(openLibraryBook);
+      const bookData = await openLibraryService.extractBookData(openLibraryBook, isbn);
 
       // Actualizar el formulario con los datos encontrados
       setFormData(prev => ({
         ...prev,
         ...bookData
       }));
+
+      // Actualizar la imagen de portada para vista previa
+      if (bookData.imagen_portada) {
+        setCoverImageUrl(bookData.imagen_portada);
+      }
 
       addToast({
         title: '¡Libro encontrado!',
@@ -175,6 +186,33 @@ export const BookForm: React.FC<BookFormProps> = ({ book, isOpen, onClose, onSav
                 Busca automáticamente título, autor, editorial y año de publicación
               </p>
             </div>
+
+            {/* Vista previa de la imagen de portada */}
+            {coverImageUrl && (
+              <div className="flex justify-center">
+                <div className="relative">
+                  <img
+                    src={coverImageUrl}
+                    alt="Portada del libro"
+                    className="w-32 h-44 object-cover rounded-lg shadow-md border"
+                    onError={(e) => {
+                      // Si la imagen falla al cargar, ocultarla
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoverImageUrl('');
+                      setFormData(prev => ({ ...prev, imagen_portada: '' }));
+                    }}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
 
             <Input
               label="Título"
