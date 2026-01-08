@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@heroui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { BookList } from '@/components/BookList';
-import { BookForm } from '@/components/BookForm';
-import { LibraryStats } from '@/components/Stats';
-import { Book } from '@/services/api';
-import { PlusIcon } from '@/components/icons';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@heroui/button";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { BookList } from "@/components/BookList";
+import { BookForm } from "@/components/BookForm";
+import { LibraryStats } from "@/components/Stats";
+import { Book } from "@/services/api";
+import { PlusIcon } from "@/components/icons";
 
 export default function DashboardPage() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -36,7 +37,7 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     logout();
-    navigate('/auth');
+    navigate("/auth");
   };
 
   return (
@@ -50,7 +51,7 @@ export default function DashboardPage() {
                 📚 Mi Biblioteca
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Bienvenido, {user?.nombre}
+                Bienvenido, {user?.email}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -61,10 +62,7 @@ export default function DashboardPage() {
               >
                 Agregar Libro
               </Button>
-              <Button
-                variant="light"
-                onClick={handleLogout}
-              >
+              <Button variant="light" onClick={handleLogout}>
                 Cerrar Sesión
               </Button>
             </div>
@@ -82,10 +80,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
             Mis Libros
           </h2>
-          <BookList
-            onEdit={handleEditBook}
-            onDelete={handleDeleteBook}
-          />
+          <BookList onDelete={handleDeleteBook} onEdit={handleEditBook} />
         </div>
       </main>
 

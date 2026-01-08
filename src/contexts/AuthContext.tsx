@@ -25,13 +25,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       if (authService.isAuthenticated()) {
-        try {
-          const userData = await authService.getProfile();
+        const userData = authService.getUserFromToken();
+        if (userData) {
           setUser(userData);
-        } catch (error) {
-          console.error('Error checking auth:', error);
+        } else {
+          console.error('Error getting user from token');
           authService.logout();
         }
       }
@@ -43,8 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await authService.login({ email, password });
-      setUser(response.user);
+      await authService.login({ email, password });
+      const userData = authService.getUserFromToken();
+      if (userData) {
+        setUser(userData);
+      } else {
+        throw new Error('No se pudo obtener la información del usuario');
+      }
     } catch (error) {
       throw error;
     }
@@ -52,8 +57,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (nombre: string, email: string, password: string) => {
     try {
-      const response = await authService.register({ nombre, email, password });
-      setUser(response.user);
+      await authService.register({ nombre, email, password });
+      const userData = authService.getUserFromToken();
+      if (userData) {
+        setUser(userData);
+      } else {
+        throw new Error('No se pudo obtener la información del usuario');
+      }
     } catch (error) {
       throw error;
     }
@@ -66,7 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: { nombre?: string; email?: string }) => {
     try {
-      const updatedUser = await authService.updateProfile(data);
+      await authService.updateProfile(data);
+      const updatedUser = await authService.getProfile();
       setUser(updatedUser);
     } catch (error) {
       throw error;

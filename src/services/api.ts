@@ -53,6 +53,18 @@ const getToken = () => localStorage.getItem('token');
 const setToken = (token: string) => localStorage.setItem('token', token);
 const removeToken = () => localStorage.removeItem('token');
 
+// Decodificar JWT para obtener información del usuario
+const decodeToken = (token: string): any => {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
+
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = getToken();
@@ -117,6 +129,21 @@ export const authService = {
 
   async getProfile() {
     return apiRequest('/usuarios/profile');
+  },
+
+  getUserFromToken(): User | null {
+    const token = getToken();
+    if (!token) return null;
+
+    const decoded = decodeToken(token);
+    if (!decoded) return null;
+
+    return {
+      id: decoded.id,
+      nombre: decoded.nombre,
+      email: decoded.email,
+      fecha_creacion: decoded.fecha_creacion
+    };
   },
 
   async updateProfile(data: { nombre?: string; email?: string }) {
