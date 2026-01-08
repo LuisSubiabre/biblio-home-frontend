@@ -319,106 +319,167 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <Input
-          placeholder="Buscar por título o autor..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          startContent={<SearchIcon className="w-4 h-4" />}
-          className="max-w-md"
-        />
+      {/* Barra de búsqueda y filtros */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+        {/* Fila superior: búsqueda y acciones */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <Input
+            placeholder="Buscar por título o autor..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            startContent={<SearchIcon className="w-4 h-4" />}
+            className="max-w-md"
+            size="sm"
+          />
 
-        {/* Filtros por estado */}
-        <div className="flex flex-wrap gap-2">
           <Button
+            color="success"
+            variant="flat"
+            onClick={exportToCSV}
+            disabled={loading || books.length === 0}
             size="sm"
-            variant={selectedFilter === 'todos' ? 'solid' : 'flat'}
-            color={selectedFilter === 'todos' ? 'primary' : 'default'}
-            onClick={() => setSelectedFilter('todos')}
+            className="whitespace-nowrap"
           >
-            Todos
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedFilter === 'en_estante' ? 'solid' : 'flat'}
-            color={selectedFilter === 'en_estante' ? 'success' : 'default'}
-            onClick={() => setSelectedFilter('en_estante')}
-          >
-            En estantes
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedFilter === 'prestado' ? 'solid' : 'flat'}
-            color={selectedFilter === 'prestado' ? 'warning' : 'default'}
-            onClick={() => setSelectedFilter('prestado')}
-          >
-            Prestados
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedFilter === 'leido' ? 'solid' : 'flat'}
-            color={selectedFilter === 'leido' ? 'primary' : 'default'}
-            onClick={() => setSelectedFilter('leido')}
-          >
-            Leídos
+            📊 Exportar CSV
           </Button>
         </div>
 
-        {/* Filtros por tipo */}
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400 self-center mr-2">Tipo:</span>
-          <Button
-            size="sm"
-            variant={selectedTypeFilter === 'todos' ? 'solid' : 'flat'}
-            color={selectedTypeFilter === 'todos' ? 'primary' : 'default'}
-            onClick={() => setSelectedTypeFilter('todos')}
-          >
-            Todos
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedTypeFilter === 'libro' ? 'solid' : 'flat'}
-            color={selectedTypeFilter === 'libro' ? 'secondary' : 'default'}
-            onClick={() => setSelectedTypeFilter('libro')}
-          >
-            📖 Libro
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedTypeFilter === 'comic' ? 'solid' : 'flat'}
-            color={selectedTypeFilter === 'comic' ? 'secondary' : 'default'}
-            onClick={() => setSelectedTypeFilter('comic')}
-          >
-            🦸 Comic
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedTypeFilter === 'manga' ? 'solid' : 'flat'}
-            color={selectedTypeFilter === 'manga' ? 'secondary' : 'default'}
-            onClick={() => setSelectedTypeFilter('manga')}
-          >
-            🇯🇵 Manga
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedTypeFilter === 'digital' ? 'solid' : 'flat'}
-            color={selectedTypeFilter === 'digital' ? 'secondary' : 'default'}
-            onClick={() => setSelectedTypeFilter('digital')}
-          >
-            💻 Digital
-          </Button>
-        </div>
+        {/* Filtros organizados */}
+        <div className="space-y-3">
+          {/* Indicador de filtros activos */}
+          {(selectedFilter !== 'todos' || selectedTypeFilter !== 'todos') && (
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Filtros activos:</span>
+              {selectedFilter !== 'todos' && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200">
+                  {selectedFilter === 'en_estante' ? 'En estantes' :
+                   selectedFilter === 'prestado' ? 'Prestados' :
+                   selectedFilter === 'leido' ? 'Leídos' : selectedFilter}
+                </span>
+              )}
+              {selectedTypeFilter !== 'todos' && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-secondary-100 dark:bg-secondary-900 text-secondary-800 dark:text-secondary-200">
+                  {selectedTypeFilter === 'libro' ? '📖 Libro' :
+                   selectedTypeFilter === 'comic' ? '🦸 Comic' :
+                   selectedTypeFilter === 'manga' ? '🇯🇵 Manga' :
+                   selectedTypeFilter === 'digital' ? '💻 Digital' :
+                   selectedTypeFilter === 'revista' ? '📰 Revista' :
+                   selectedTypeFilter === 'audiolibro' ? '🎧 Audiolibro' :
+                   '📚 Otro'}
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedFilter('todos');
+                  setSelectedTypeFilter('todos');
+                  setSearchTerm('');
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline ml-2"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          )}
 
-        {/* Botón de exportación */}
-        <Button
-          color="success"
-          variant="flat"
-          onClick={exportToCSV}
-          disabled={loading || books.length === 0}
-          className="whitespace-nowrap"
-        >
-          📊 Exportar a CSV
-        </Button>
+          {/* Filtros por estado */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado:</span>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant={selectedFilter === 'todos' ? 'solid' : 'flat'}
+                  color={selectedFilter === 'todos' ? 'primary' : 'default'}
+                  onClick={() => setSelectedFilter('todos')}
+                  className="h-8 px-3"
+                >
+                  Todos
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedFilter === 'en_estante' ? 'solid' : 'flat'}
+                  color={selectedFilter === 'en_estante' ? 'success' : 'default'}
+                  onClick={() => setSelectedFilter('en_estante')}
+                  className="h-8 px-3"
+                >
+                  En estantes
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedFilter === 'prestado' ? 'solid' : 'flat'}
+                  color={selectedFilter === 'prestado' ? 'warning' : 'default'}
+                  onClick={() => setSelectedFilter('prestado')}
+                  className="h-8 px-3"
+                >
+                  Prestados
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedFilter === 'leido' ? 'solid' : 'flat'}
+                  color={selectedFilter === 'leido' ? 'primary' : 'default'}
+                  onClick={() => setSelectedFilter('leido')}
+                  className="h-8 px-3"
+                >
+                  Leídos
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtros por tipo */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo:</span>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant={selectedTypeFilter === 'todos' ? 'solid' : 'flat'}
+                  color={selectedTypeFilter === 'todos' ? 'primary' : 'default'}
+                  onClick={() => setSelectedTypeFilter('todos')}
+                  className="h-8 px-3"
+                >
+                  Todos
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedTypeFilter === 'libro' ? 'solid' : 'flat'}
+                  color={selectedTypeFilter === 'libro' ? 'secondary' : 'default'}
+                  onClick={() => setSelectedTypeFilter('libro')}
+                  className="h-8 px-3"
+                >
+                  📖 Libro
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedTypeFilter === 'comic' ? 'solid' : 'flat'}
+                  color={selectedTypeFilter === 'comic' ? 'secondary' : 'default'}
+                  onClick={() => setSelectedTypeFilter('comic')}
+                  className="h-8 px-3"
+                >
+                  🦸 Comic
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedTypeFilter === 'manga' ? 'solid' : 'flat'}
+                  color={selectedTypeFilter === 'manga' ? 'secondary' : 'default'}
+                  onClick={() => setSelectedTypeFilter('manga')}
+                  className="h-8 px-3"
+                >
+                  🇯🇵 Manga
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedTypeFilter === 'digital' ? 'solid' : 'flat'}
+                  color={selectedTypeFilter === 'digital' ? 'secondary' : 'default'}
+                  onClick={() => setSelectedTypeFilter('digital')}
+                  className="h-8 px-3"
+                >
+                  💻 Digital
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {filteredBooks.length === 0 ? (
