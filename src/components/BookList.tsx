@@ -7,6 +7,8 @@ import { addToast } from '@heroui/toast';
 import { bookService, Book } from '@/services/api';
 import { EditIcon, DeleteIcon, SearchIcon } from '@/components/icons';
 
+type FilterType = 'todos' | 'en_estante' | 'prestado' | 'leido';
+
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,6 +54,7 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>('todos');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -61,16 +64,34 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
   }, []);
 
   useEffect(() => {
+    let filtered = books;
+
+    // Aplicar filtro de búsqueda
     if (searchTerm) {
-      const filtered = books.filter(book =>
+      filtered = filtered.filter(book =>
         book.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         book.autor.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredBooks(filtered);
-    } else {
-      setFilteredBooks(books);
     }
-  }, [books, searchTerm]);
+
+    // Aplicar filtro por estado/leído
+    if (selectedFilter !== 'todos') {
+      filtered = filtered.filter(book => {
+        switch (selectedFilter) {
+          case 'en_estante':
+            return book.estado === 'en_estante';
+          case 'prestado':
+            return book.estado === 'prestado';
+          case 'leido':
+            return book.leido === true;
+          default:
+            return true;
+        }
+      });
+    }
+
+    setFilteredBooks(filtered);
+  }, [books, searchTerm, selectedFilter]);
 
   const loadBooks = async () => {
     try {
@@ -159,7 +180,7 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
           placeholder="Buscar por título o autor..."
           value={searchTerm}
@@ -167,11 +188,49 @@ export const BookList: React.FC<BookListProps> = ({ onEdit, onDelete }) => {
           startContent={<SearchIcon className="w-4 h-4" />}
           className="max-w-md"
         />
+
+        {/* Filtros por estado */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={selectedFilter === 'todos' ? 'solid' : 'flat'}
+            color={selectedFilter === 'todos' ? 'primary' : 'default'}
+            onClick={() => setSelectedFilter('todos')}
+          >
+            Todos
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedFilter === 'en_estante' ? 'solid' : 'flat'}
+            color={selectedFilter === 'en_estante' ? 'success' : 'default'}
+            onClick={() => setSelectedFilter('en_estante')}
+          >
+            En estantes
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedFilter === 'prestado' ? 'solid' : 'flat'}
+            color={selectedFilter === 'prestado' ? 'warning' : 'default'}
+            onClick={() => setSelectedFilter('prestado')}
+          >
+            Prestados
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedFilter === 'leido' ? 'solid' : 'flat'}
+            color={selectedFilter === 'leido' ? 'primary' : 'default'}
+            onClick={() => setSelectedFilter('leido')}
+          >
+            Leídos
+          </Button>
+        </div>
       </div>
 
       {filteredBooks.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          {searchTerm ? 'No se encontraron libros' : 'No tienes libros registrados'}
+          {searchTerm || selectedFilter !== 'todos'
+            ? 'No se encontraron libros con los filtros aplicados'
+            : 'No tienes libros registrados'}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
